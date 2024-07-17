@@ -15,5 +15,6 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: autograph-images-${{ github.sha }}
-          run-id: ${{ github.event.workflow_run.id }}
+          run_id: ${{ github.event.workflow_run.id }}
+          workflow: build.yaml
           path: docker-cache/
