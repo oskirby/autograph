@@ -1,9 +1,11 @@
 name: Tests
 on:
-  workflow_run:
-    workflows: [Build]:
-    types:
-      - completed
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
 # Restrict tests to the most recent commit.
 concurrency:
@@ -14,6 +16,7 @@ jobs:
   unit-tests:
     name: Run Unit Tests
     runs-on: ubuntu-22.04
+    uses: ./.github/workflows/build.yaml
     env:
       DBNAME: autograph
       PGPASSWORD: myautographdbpassword
@@ -78,6 +81,7 @@ jobs:
   integration-tests:
     name: Run Integration Tests
     runs-on: ubuntu-22.04
+    uses: ./.github/workflows/build.yaml
     needs:
       - enumerate-tests
     strategy:
