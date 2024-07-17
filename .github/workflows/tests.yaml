@@ -1,11 +1,9 @@
 name: Tests
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+  workflow_run:
+    workflows: [Build]:
+    types:
+      - completed
 
 # Restrict tests to the most recent commit.
 concurrency:
@@ -13,42 +11,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: Build Docker Images
-    runs-on: ubuntu-22.04
-    outputs:
-      testcases: ${{ steps.enum-tests.outputs.testcases }}
-    steps:
-      - name: Clone repository
-        uses: actions/checkout@v4
-
-      - name: Build images
-        shell: bash
-        run: make generate build
-
-      - name: Save images
-        shell: bash
-        run: |
-            mkdir -p docker-cache
-            docker save -o docker-cache/autograph-images.tar autograph-app autograph-app-hsm
-
-      - name: Enumerate tests
-        id: enum-tests
-        shell: bash
-        run: |
-            echo -n "testcases=" >> $GITHUB_OUTPUT
-            yq -o=json '.services | keys' tools/autograph-client/integration-tests.yml | jq -c >> $GITHUB_OUTPUT
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: autograph-images-${{ github.sha }}
-          path: docker-cache/
-
   unit-tests:
     name: Run Unit Tests
     runs-on: ubuntu-22.04
-    needs:
-      - build
     env:
       DBNAME: autograph
       PGPASSWORD: myautographdbpassword
@@ -70,6 +35,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: autograph-images-${{ github.sha }}
+          run-id: ${{ github.event.workflow_run.id }}
           path: docker-cache/
 
       - name: Initialize database
@@ -93,15 +59,31 @@ jobs:
             --user 0 \
             autograph-app ./bin/run_unit_tests.sh
 
+  enumerate-tests:
+    name: Enumerate Tests
+    runs-on: ubuntu-22.04
+    outputs:
+      testcases: ${{ steps.enum-tests.outputs.testcases }}
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+
+      - name: Enumerate tests
+        id: enum-tests
+        shell: bash
+        run: |
+            echo -n "testcases=" >> $GITHUB_OUTPUT
+            yq -o=json '.services | keys' tools/autograph-client/integration-tests.yml | jq -c >> $GITHUB_OUTPUT
+
   integration-tests:
     name: Run Integration Tests
     runs-on: ubuntu-22.04
     needs:
-      - build
+      - enumerate-tests
     strategy:
       fail-fast: false # Don't cancel other jobs if a test fails
       matrix:
-        testcase: ${{ fromJSON(needs.build.outputs.testcases) }}
+        testcase: ${{ fromJSON(needs.enumerate-tests.outputs.testcases) }}
     steps:
       - name: Clone repository
         uses: actions/checkout@v4
@@ -109,6 +91,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: autograph-images-${{ github.sha }}
+          run-id: ${{ github.event.workflow_run.id }}
           path: docker-cache/
 
       - name: Load images
