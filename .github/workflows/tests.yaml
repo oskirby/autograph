@@ -13,10 +13,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  build:
+    uses: ./.github/workflows/build.yaml
+
   unit-tests:
     name: Run Unit Tests
     runs-on: ubuntu-22.04
-    uses: ./.github/workflows/build.yaml
+    needs:
+      - build
     env:
       DBNAME: autograph
       PGPASSWORD: myautographdbpassword
@@ -81,9 +85,9 @@ jobs:
   integration-tests:
     name: Run Integration Tests
     runs-on: ubuntu-22.04
-    uses: ./.github/workflows/build.yaml
     needs:
       - enumerate-tests
+      - build
     strategy:
       fail-fast: false # Don't cancel other jobs if a test fails
       matrix:
