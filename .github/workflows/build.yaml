@@ -24,7 +24,7 @@ jobs:
         with:
           push: false
           sbom: true
-          outputs: type=docker,dest=autograph-images.tar
+          outputs: type=oci,dest=autograph-images.tar
           context: .
 
       - uses: actions/upload-artifact@v4
