@@ -3,6 +3,8 @@ on:
   push:
     branches:
       - main
+  tags:
+    - '[0-9]+.[0-9a-z]+.[0-9a-z]+'
   pull_request:
     branches:
       - main
@@ -22,3 +24,25 @@ jobs:
           name: autograph-images-${{ github.sha }}
           run-id: ${{ github.event.workflow_run.id }}
           path: docker-cache/
+
+      - name: Load images
+        shell: bash
+        run: docker load -i docker-cache/autograph-images.tar
+
+      - name: Push to Dockerhub
+        shell: bash
+        env:
+          GITREF: ${{github.ref}}
+          DOCKERHUB_REPO: nkirby/autograph-debug
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
+        run: |
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_PASSWORD
+            docker tag autograph-app "${DOCKERHUB_REPO}:${{github.ref_name}}"
+            docker push "${DOCKERHUB_REPO}:${{github.ref_name}}"
+          elif [[ "$${{github.ref}}" == "refs/heads/main" ]]
+            docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_PASSWORD
+            docker tag autograph-app ${DOCKERHUB_REPO}:latest
+            docker push ${DOCKERHUB_REPO}:latest
+          fi
