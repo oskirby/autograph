@@ -10,11 +10,6 @@ on:
         default: ${{ github.run_id }}
         type: string
 
-# Restrict tests to the most recent commit.
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   enumerate:
     name: Enumerate Tests
