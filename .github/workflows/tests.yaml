@@ -88,5 +88,7 @@ jobs:
 
   integration-tests:
     uses: ./.github/workflows/integration-tests.yaml
+    needs:
+      - build
     with:
       artifact-name: autograph-images-${{ github.sha }}
